@@ -1,43 +1,26 @@
-use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    net::TcpListener,
-};
+extern crate page_size;
+mod dal;
+use dal::{DataAccessLayer, Page};
 
 #[tokio::main]
 async fn main() {
-    let server = match TcpListener::bind("localhost:8080").await {
-        Ok(server) => server,
-        Err(err) => {
-            eprintln!("TCPBindingError: Could not start the server at port 8080 \n Details: {err}");
+    let pgsize = page_size::get();
+    let dal = DataAccessLayer::new("test.db", pgsize as u64).await;
+    let mut dal = match dal {
+        Ok(dal) => dal,
+        Err(e) => {
+            eprintln!("DataAccessLayerError: {e}");
             return;
         }
     };
+    let mut p = Page::new(&dal);
+    p.num = dal.free_list.get_next_page();
+    "TEST DATA"
+        .as_bytes()
+        .into_iter()
+        .for_each(|by| p.data.push(*by));
 
-    loop {
-        let (mut socket, _) = match server.accept().await {
-            Ok(server) => server,
-            Err(err) => {
-                eprintln!(
-                "SocketAcceptError: Could not accept any new connection in the provided socket. \n Details: {err}");
-                return;
-            }
-        };
-
-        tokio::spawn(async move {
-            let (reader, mut writer) = socket.split();
-            let mut reader = BufReader::new(reader);
-            let mut line = String::new();
-
-            loop {
-                let bytes_read = reader.read_line(&mut line).await.unwrap();
-
-                if bytes_read == 0 {
-                    break;
-                }
-                writer.write_all(line.as_bytes()).await.unwrap();
-
-                line.clear();
-            }
-        });
-    }
+    if let Err(e) = dal.write_page(&mut p).await {
+        eprintln!("DataAccessLayerError: Couldn't persist the data to the disk. \n Details: {e}")
+    };
 }
