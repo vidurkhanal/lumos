@@ -1,7 +1,6 @@
 use super::page::PageNumber;
 // MetaPage is the maximum pgnum that is used by the db for its own purposes. For now, only page 0 is used as the
 // header page. It means all other page numbers can be used.
-const META_PAGE: PageNumber = 0;
 
 #[derive(Debug)]
 pub struct FreeList {

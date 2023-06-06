@@ -1,4 +1,5 @@
 mod freelist;
+mod meta;
 mod page;
 
 use tokio::fs::{File, OpenOptions};
