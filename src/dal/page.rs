@@ -9,10 +9,10 @@ pub struct Page {
 }
 
 impl Page {
-    pub fn new(d: &DataAccessLayer) -> Self {
+    pub fn new(size: u16) -> Self {
         return Page {
             num: 0,
-            data: Vec::with_capacity(d.page_size as usize),
+            data: vec![0u8; size.into()],
         };
     }
 }
