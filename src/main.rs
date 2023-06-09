@@ -26,7 +26,7 @@ async fn main() {
     if let Err(e) = dal.write_page(&mut p).await {
         eprintln!("DataAccessLayerError: Couldn't persist the data to the disk. \n Details: {e}")
     };
-    dal.write_free_list().unwrap();
+    dal.write_free_list().await.unwrap();
 
     dal.close().await.unwrap();
 

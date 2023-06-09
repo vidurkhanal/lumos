@@ -29,7 +29,7 @@ impl DataAccessLayer {
                     free_list: FreeList::new(),
                     meta: Meta::new(),
                 };
-                let _ = dal.read_meta().await?;
+                dal.read_meta().await?;
                 dal.read_free_list().await?;
                 Ok(dal)
             }
@@ -48,7 +48,7 @@ impl DataAccessLayer {
                     meta: Meta::new(),
                 };
                 dal.meta.free_list_page = dal.free_list.get_next_page();
-                dal.write_free_list()?;
+                dal.write_free_list().await?;
                 dal.write_meta().await?;
                 Ok(dal)
             }
@@ -83,12 +83,7 @@ impl DataAccessLayer {
         let mut p = Page::new(self.page_size);
         p.num = META_PAGE_NUM;
         self.meta.serialize(&mut p.data)?;
-        if let Err(e) = self.write_page(&mut p).await {
-            eprintln!(
-                "DataAccessLayerError: Couldn't persist the data to the disk. \n Details: {e}"
-            )
-        };
-
+        self.write_page(&mut p).await?;
         Ok(p)
     }
 
@@ -98,10 +93,11 @@ impl DataAccessLayer {
         Ok(())
     }
 
-    pub fn write_free_list(&mut self) -> Result<Page> {
+    pub async fn write_free_list(&mut self) -> Result<Page> {
         let mut p = Page::new(self.page_size);
         p.num = self.meta.free_list_page;
         self.free_list.serialize(&mut p.data);
+        self.write_page(&mut p).await?;
         self.meta.free_list_page = p.num;
 
         Ok(p)
@@ -109,7 +105,7 @@ impl DataAccessLayer {
 
     async fn read_free_list(&mut self) -> Result<()> {
         let mut page = self.read_page(self.meta.free_list_page).await?;
-        self.free_list.deserialize(&mut page.data);
+        self.free_list.deserialize(&mut page.data)?;
         Ok(())
     }
 }
