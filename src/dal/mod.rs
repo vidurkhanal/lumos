@@ -22,6 +22,7 @@ impl DataAccessLayer {
     pub async fn new(path: &str) -> Result<Self> {
         match fs::metadata(path).await {
             Ok(_) => {
+                // println!("File exists");
                 let file = OpenOptions::new().read(true).write(true).open(path).await?;
                 let mut dal = DataAccessLayer {
                     file,
@@ -99,7 +100,6 @@ impl DataAccessLayer {
         self.free_list.serialize(&mut p.data);
         self.write_page(&mut p).await?;
         self.meta.free_list_page = p.num;
-
         Ok(p)
     }
 

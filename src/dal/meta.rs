@@ -1,11 +1,11 @@
-extern crate bytemuck;
+use serde::{Deserialize, Serialize};
 
 use crate::{constants::PAGE_NUM_SIZE, dal::PageNumber};
 use tokio::io::Result;
 
 pub const META_PAGE_NUM: u64 = 0;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Meta {
     pub free_list_page: PageNumber,
 }
@@ -17,17 +17,18 @@ impl Meta {
 
     pub fn serialize(&mut self, buf: &mut Vec<u8>) -> Result<()> {
         let mut pos = 0;
-        let bytes = bytemuck::bytes_of(&mut self.free_list_page);
-        buf[pos..pos + bytes.len()].copy_from_slice(bytes);
-        pos += PAGE_NUM_SIZE as usize;
+        let bytes = bincode::serialize(&mut self.free_list_page).unwrap();
+        buf[pos..pos + bytes.len()].copy_from_slice(&bytes);
+        // pos += PAGE_NUM_SIZE as usize;
         Ok(())
     }
 
-    pub fn deserialize(&mut self, buf: &mut Vec<u8>) {
+    pub fn deserialize(&mut self, buf: &mut Vec<u8>) -> Result<()> {
         let mut pos = 0;
         self.free_list_page =
-            bytemuck::from_bytes::<PageNumber>(&buf[pos..pos + PAGE_NUM_SIZE as usize]).clone();
+            bincode::deserialize(&buf[pos..pos + PAGE_NUM_SIZE as usize]).unwrap();
         // pos += PAGE_NUM_SIZE as usize;
+        Ok(())
     }
 }
 

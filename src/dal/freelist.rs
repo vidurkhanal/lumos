@@ -1,11 +1,12 @@
 use crate::constants::PAGE_NUM_SIZE;
+use serde::{Deserialize, Serialize};
 use tokio::io::Result;
 
 use super::page::PageNumber;
 // MetaPage is the maximum pgnum that is used by the db for its own purposes. For now, only page 0 is used as the
 // header page. It means all other page numbers can be used.
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FreeList {
     // Holds the maximum page allocated. maxPage*PageSize = fileSize
     max_page: PageNumber,
@@ -39,36 +40,34 @@ impl FreeList {
 
     pub fn serialize(&mut self, buf: &mut Vec<u8>) {
         let mut pos: usize = 0;
-        let max_page_bytes = bytemuck::bytes_of(&self.max_page);
-        buf[pos..pos + PAGE_NUM_SIZE as usize].copy_from_slice(max_page_bytes);
+        let max_page_bytes = bincode::serialize(&self.max_page).unwrap();
+        buf[pos..pos + PAGE_NUM_SIZE as usize].copy_from_slice(&max_page_bytes);
         pos += PAGE_NUM_SIZE as usize;
 
         let released_pages_count = self.released_pages.len();
-        let released_page_count_bytes = bytemuck::bytes_of(&released_pages_count);
-        buf[pos..pos + PAGE_NUM_SIZE as usize].copy_from_slice(released_page_count_bytes);
+        let released_page_count_bytes = bincode::serialize(&released_pages_count).unwrap();
+        buf[pos..pos + PAGE_NUM_SIZE as usize].copy_from_slice(&released_page_count_bytes);
         pos += PAGE_NUM_SIZE as usize;
 
         for page in &self.released_pages {
-            buf[pos..pos + PAGE_NUM_SIZE as usize].copy_from_slice(bytemuck::bytes_of(page));
+            buf[pos..pos + PAGE_NUM_SIZE as usize]
+                .copy_from_slice(&bincode::serialize(&page).unwrap());
             pos += PAGE_NUM_SIZE as usize;
         }
     }
 
     pub fn deserialize(&mut self, buf: &mut Vec<u8>) -> Result<()> {
         let mut pos = 0;
-        self.max_page =
-            bytemuck::from_bytes::<PageNumber>(&buf[pos..pos + PAGE_NUM_SIZE as usize]).to_owned();
+        self.max_page = bincode::deserialize(&buf[pos..pos + PAGE_NUM_SIZE as usize]).unwrap();
         pos += PAGE_NUM_SIZE as usize;
 
         let released_pages_count =
-            bytemuck::from_bytes::<PageNumber>(&buf[pos..pos + PAGE_NUM_SIZE as usize]).to_owned();
+            bincode::deserialize(&buf[pos..pos + PAGE_NUM_SIZE as usize]).unwrap();
         pos += PAGE_NUM_SIZE as usize;
 
         for i in 0..released_pages_count {
-            self.released_pages.push(
-                bytemuck::from_bytes::<PageNumber>(&buf[pos..pos + PAGE_NUM_SIZE as usize])
-                    .to_owned(),
-            );
+            self.released_pages
+                .push(bincode::deserialize(&buf[pos..pos + PAGE_NUM_SIZE as usize]).unwrap());
             pos += PAGE_NUM_SIZE as usize;
         }
         Ok(())
